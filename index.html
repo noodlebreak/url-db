@@ -1,0 +1,620 @@
+<!-- https://github.com/noodlebreak/url-db -->
+<meta charset="UTF-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --blue-50: #E6F1FB; --blue-100: #B5D4F4; --blue-200: #85B7EB;
+  --blue-400: #378ADD; --blue-600: #185FA5; --blue-800: #0C447C; --blue-900: #042C53;
+}
+#app { max-width: 680px; margin: 0 auto; padding: 0 1rem 2rem; font-family: var(--font-sans, system-ui, sans-serif); color: var(--color-text-primary); }
+.sticky-header { position: sticky; top: 0; z-index: 40; background: var(--color-background-primary, #fff); padding-top: 2rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--blue-100); margin-bottom: 1rem; }
+.header-row { display: flex; align-items: baseline; justify-content: space-between; }
+h1 { font-size: 22px; font-weight: 500; color: var(--blue-800); letter-spacing: -0.3px; margin-bottom: 4px; }
+.about-link { font-size: 12px; font-weight: 500; color: var(--blue-400); cursor: pointer; background: none; border: 1px solid var(--blue-100); padding: 4px 10px; border-radius: 6px; font-family: inherit; transition: background 0.15s, border-color 0.15s; }
+.about-link:hover { background: var(--blue-50); border-color: var(--blue-400); }
+.subtitle { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+.input-row { display: flex; gap: 8px; margin-bottom: 1rem; align-items: flex-start; }
+#content-input { flex: 1; padding: 10px 14px; font-size: 14px; border: 1px solid var(--blue-200); border-radius: 8px; background: var(--color-background-primary); color: var(--color-text-primary); outline: none; transition: border-color 0.15s; resize: both; min-height: 42px; max-height: 200px; font-family: inherit; field-sizing: content; }
+#content-input:focus { border-color: var(--blue-400); }
+#content-input::placeholder { color: var(--color-text-tertiary); }
+.btn { padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 8px; border: 1px solid var(--blue-600); background: var(--blue-600); color: #fff; transition: background 0.15s; white-space: nowrap; }
+.btn:hover { background: var(--blue-800); border-color: var(--blue-800); }
+.btn:active { transform: scale(0.98); }
+.btn-outline { background: transparent; color: var(--blue-600); border: 1px solid var(--blue-200); }
+.btn-outline:hover { background: var(--blue-50); border-color: var(--blue-400); }
+.btn-danger { background: transparent; color: #A32D2D; border: 1px solid #F7C1C1; }
+.btn-danger:hover { background: #FCEBEB; }
+.size-bar-wrap { margin-bottom: 0; }
+.stats-bar { display: flex; border: 1px solid var(--blue-100); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+.stat-cell { flex: 1; padding: 7px 10px; display: flex; flex-direction: column; align-items: center; gap: 1px; border-right: 1px solid var(--blue-100); }
+.stat-cell:last-child { border-right: none; }
+.stat-value { font-size: 13px; font-weight: 600; color: var(--blue-800); line-height: 1.2; }
+.stat-label { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
+.size-bar-track { height: 4px; background: var(--blue-50); border-radius: 99px; border: 1px solid var(--blue-100); overflow: hidden; }
+.size-bar-fill { height: 100%; background: var(--blue-400); border-radius: 99px; transition: width 0.3s; width: 0%; }
+.items-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.25rem; }
+.item-card { display: flex; align-items: center; gap: 10px; background: var(--color-background-primary); border: 1px solid var(--blue-100); border-radius: 8px; padding: 10px 14px; }
+.item-icon { width: 28px; height: 28px; border-radius: 6px; background: var(--blue-50); border: 1px solid var(--blue-100); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.item-icon svg { width: 14px; height: 14px; }
+.item-content { flex: 1; min-width: 0; }
+.item-main { font-size: 14px; color: var(--color-text-primary); word-break: break-all; }
+.item-main a { color: var(--blue-600); text-decoration: none; }
+.item-main a:hover { text-decoration: underline; }
+.item-meta { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+.http-toggle { font-size: 11px; color: var(--blue-400); cursor: pointer; border: 1px solid var(--blue-100); background: none; padding: 0 4px; border-radius: 4px; }
+.http-toggle:hover { background: var(--blue-50); }
+.item-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; opacity: 0.4; transition: opacity 0.15s; }
+.item-card:hover .item-actions { opacity: 1; }
+.item-action-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--blue-100); background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, border-color 0.15s; padding: 0; }
+.item-action-btn svg { width: 13px; height: 13px; }
+.item-action-btn:hover { background: var(--blue-50); border-color: var(--blue-400); }
+.item-action-btn.delete:hover { background: #FCEBEB; border-color: #F09595; }
+.item-edit-row { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; }
+.item-edit-input { flex: 1; padding: 6px 10px; font-size: 13px; border: 1.5px solid var(--blue-400); border-radius: 6px; background: #fff; color: var(--color-text-primary); outline: none; font-family: inherit; resize: vertical; min-height: 32px; field-sizing: content; }
+.item-edit-btn { padding: 5px 10px; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 6px; border: 1px solid var(--blue-200); background: #fff; color: var(--blue-600); font-family: inherit; transition: background 0.15s; }
+.item-edit-btn:hover { background: var(--blue-50); }
+.item-edit-btn.save { background: var(--blue-600); color: #fff; border-color: var(--blue-600); }
+.item-edit-btn.save:hover { background: var(--blue-800); }
+.action-bar {
+  display: flex; align-items: center; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+}
+.action-btn {
+  height: 34px; border-radius: 8px; border: 1px solid var(--blue-100);
+  background: #fff; color: var(--blue-600); cursor: pointer; display: flex;
+  align-items: center; justify-content: center; gap: 6px; padding: 0 12px;
+  font-size: 12px; font-weight: 500; font-family: inherit; white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.action-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.action-btn:hover { background: var(--blue-50); border-color: var(--blue-400); }
+.action-btn.primary { background: var(--blue-600); color: #fff; border-color: var(--blue-600); }
+.action-btn.primary:hover { background: var(--blue-800); border-color: var(--blue-800); }
+.action-btn.danger { color: #A32D2D; border-color: #F7C1C1; }
+.action-btn.danger:hover { background: #FCEBEB; border-color: #F09595; }
+.action-spacer { flex: 1; }
+.empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--color-text-tertiary); font-size: 14px; border: 1px dashed var(--blue-100); border-radius: 8px; margin-bottom: 1.25rem; }
+.encrypted-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--blue-600); background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: 99px; padding: 2px 10px; margin-bottom: 1rem; }
+.toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--blue-800); color: #fff; font-size: 13px; padding: 8px 18px; border-radius: 99px; transition: transform 0.25s; pointer-events: none; z-index: 999; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+.overlay { position: fixed; inset: 0; background: rgba(4,44,83,0.35); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+.modal { background: #ffffff; border: 1.5px solid #B5D4F4; border-radius: 14px; padding: 1.75rem; width: 100%; max-width: 400px; box-shadow: 0 4px 24px rgba(4,44,83,0.10); }
+.modal h2 { font-size: 20px; font-weight: 600; color: #0C447C; margin-bottom: 8px; }
+.modal p { font-size: 15px; color: #444; margin-bottom: 1.25rem; }
+.modal-input { width: 100%; padding: 12px 14px; font-size: 15px; border: 1.5px solid #85B7EB; border-radius: 8px; background: #ffffff; color: #111; outline: none; margin-bottom: 8px; transition: border-color 0.15s; font-family: inherit; }
+.modal-input:focus { border-color: #185FA5; }
+.modal-error { font-size: 14px; color: #A32D2D; min-height: 20px; margin-bottom: 8px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+.modal-option-row { display: flex; gap: 10px; margin-bottom: 1.25rem; }
+.modal-option { flex: 1; padding: 16px 12px; border: 1.5px solid #B5D4F4; border-radius: 10px; cursor: pointer; text-align: center; background: #ffffff; transition: border-color 0.15s, background 0.15s; }
+.modal-option:hover { border-color: #378ADD; background: #E6F1FB; }
+.modal-option.selected { border-color: #185FA5; background: #E6F1FB; }
+.modal-option-title { font-size: 16px; font-weight: 600; color: #0C447C; margin-bottom: 4px; }
+.modal-option-desc { font-size: 13px; color: #555; line-height: 1.4; }
+.modal-btn { padding: 11px 22px; font-size: 15px; font-weight: 500; cursor: pointer; border-radius: 8px; border: 1.5px solid #185FA5; background: #185FA5; color: #fff; transition: background 0.15s; font-family: inherit; }
+.modal-btn:hover { background: #0C447C; border-color: #0C447C; }
+.modal-btn-outline { background: #fff; color: #185FA5; border: 1.5px solid #B5D4F4; }
+.modal-btn-outline:hover { background: #E6F1FB; border-color: #378ADD; }
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+.shake { animation: shake 0.4s ease; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+
+<div id="app">
+  <div class="sticky-header">
+    <div class="header-row">
+      <h1>urlDB <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.13</span></h1>
+      <button class="about-link" onclick="openAboutModal()">about</button>
+    </div>
+    <p class="subtitle">paste links or text — your data lives in the url, no backend needed</p>
+    <div id="encrypted-badge-wrap"></div>
+    <div class="input-row">
+      <textarea id="content-input" rows="1" placeholder="paste a link or type some text…"></textarea>
+      <button class="btn" onclick="addItem()">add</button>
+    </div>
+    <div class="size-bar-wrap">
+      <div class="stats-bar">
+        <div class="stat-cell"><span class="stat-value" id="items-count">0</span><span class="stat-label">items</span></div>
+        <div class="stat-cell"><span class="stat-value" id="avg-length">0</span><span class="stat-label">avg chars</span></div>
+        <div class="stat-cell"><span class="stat-value" id="size-label">0 B</span><span class="stat-label">url size / ~2 MB</span></div>
+      </div>
+      <div class="size-bar-track"><div class="size-bar-fill" id="size-fill"></div></div>
+    </div>
+    <div class="action-bar">
+      <button class="action-btn primary" onclick="openCopyModal()" title="copy shareable url">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5l-3-3z"/><path d="M10 2v3h3"/></svg>
+        copy url
+      </button>
+      <button class="action-btn" onclick="triggerImport()" title="import txt or json">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg>
+        import
+      </button>
+      <button class="action-btn" onclick="exportJson()" title="export json">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2m-3 5 3-3 3 3"/><path d="M3 13h10"/></svg>
+        export
+      </button>
+      <div class="action-spacer"></div>
+      <button class="action-btn danger" onclick="clearAll()" title="clear all">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4h11"/><path d="M5.5 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4"/><path d="M4 4l.7 9.2a1 1 0 0 0 1 .8h4.6a1 1 0 0 0 1-.8L12 4"/><path d="M6.5 7v4M9.5 7v4"/></svg>
+        clear all
+      </button>
+    </div>
+  </div>
+  <div id="items-container"></div>
+  <input type="file" id="import-file" accept=".txt,.json,.html,.htm" style="display:none" onchange="handleImport(event)" />
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="modal-root"></div>
+
+<script>
+const MAX_BYTES = 2 * 1024 * 1024;
+let items = [];
+let schemeMap = {};
+let currentlyEncrypted = false;
+
+function isUrl(str) {
+  try { new URL('https://' + str); return str.includes('.') && !str.includes(' '); }
+  catch { return false; }
+}
+function stripScheme(str) { return str.replace(/^https?:\/\//i, ''); }
+function b36ts() { return Math.floor(Date.now() / 1000).toString(36); }
+function b36toDate(b36) {
+  const d = new Date(parseInt(b36, 36) * 1000);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function lzEncode(data) { return LZString.compressToEncodedURIComponent(JSON.stringify(data)); }
+function lzDecode(str) { try { return JSON.parse(LZString.decompressFromEncodedURIComponent(str)); } catch { return null; } }
+
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+
+function bufToB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let str = '';
+  for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64ToBuf(b64) {
+  const s = b64.replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+
+async function encryptPayload(password, data) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const enc = new TextEncoder();
+  const plaintext = JSON.stringify(data);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  const saltB64 = bufToB64(salt);
+  const ivB64 = bufToB64(iv);
+  const ctB64 = bufToB64(ciphertext);
+  return `v2.${saltB64}.${ivB64}.${ctB64}`;
+}
+
+async function decryptPayload(password, hash) {
+  try {
+    const parts = hash.split('.');
+    if (parts.length !== 4 || parts[0] !== 'v2') {
+      return null;
+    }
+    const salt = b64ToBuf(parts[1]);
+    const iv = b64ToBuf(parts[2]);
+    const ciphertext = b64ToBuf(parts[3]);
+    const key = await deriveKey(password, salt);
+    const dec = new TextDecoder();
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return JSON.parse(dec.decode(decrypted));
+  } catch(e) {
+    return null;
+  }
+}
+
+function getPayload() { return { v: 1, i: items }; }
+
+function updateHash(compressed) {
+  history.replaceState(null, '', compressed ? '#' + compressed : window.location.pathname);
+  updateSizeBar(compressed || '');
+}
+
+function updateSizeBar(str) {
+  const bytes = new Blob([str]).size;
+  const pct = Math.min((bytes / MAX_BYTES) * 100, 100);
+  document.getElementById('size-fill').style.width = pct + '%';
+  document.getElementById('size-label').textContent = formatBytes(bytes);
+  updateStats();
+}
+
+function updateStats() {
+  const count = items.length;
+  const avg = count ? Math.round(items.reduce((s, i) => s + i[0].length, 0) / count) : 0;
+  document.getElementById('items-count').textContent = count;
+  document.getElementById('avg-length').textContent = avg;
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(2) + ' MB';
+}
+
+function addItem() {
+  const input = document.getElementById('content-input');
+  const raw = input.value.trim();
+  if (!raw) return;
+  items.push([isUrl(raw) ? stripScheme(raw) : raw, b36ts()]);
+  input.value = '';
+  const compressed = lzEncode(getPayload());
+  updateHash(compressed);
+  render();
+  input.focus();
+}
+
+function clearAll() {
+  if (!items.length) return;
+  items = []; schemeMap = {}; currentlyEncrypted = false;
+  updateHash(''); renderBadge(); render();
+}
+
+function toggleScheme(idx) {
+  schemeMap[idx] = schemeMap[idx] === 'http' ? 'https' : 'http';
+  render();
+}
+
+function deleteItem(idx) {
+  items.splice(idx, 1);
+  delete schemeMap[idx];
+  const newMap = {};
+  Object.keys(schemeMap).forEach(k => {
+    const ki = parseInt(k);
+    if (ki > idx) newMap[ki - 1] = schemeMap[k];
+    else if (ki < idx) newMap[ki] = schemeMap[k];
+  });
+  schemeMap = newMap;
+  const compressed = items.length ? lzEncode(getPayload()) : '';
+  updateHash(compressed);
+  render();
+}
+
+function startEdit(idx) {
+  const area = document.getElementById('edit-area-' + idx);
+  if (area.innerHTML) { area.innerHTML = ''; return; }
+  const val = items[idx][0].replace(/"/g, '&quot;');
+  area.innerHTML = `<div class="item-edit-row">
+    <textarea class="item-edit-input" id="edit-input-${idx}">${val}</textarea>
+    <button class="item-edit-btn save" onclick="saveEdit(${idx})">save</button>
+    <button class="item-edit-btn" onclick="cancelEdit(${idx})">cancel</button>
+  </div>`;
+  const inp = document.getElementById('edit-input-' + idx);
+  inp.focus();
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(idx); }
+    if (e.key === 'Escape') cancelEdit(idx);
+  });
+}
+
+function saveEdit(idx) {
+  const inp = document.getElementById('edit-input-' + idx);
+  const val = inp.value.trim();
+  if (!val) return;
+  items[idx][0] = isUrl(val) ? stripScheme(val) : val;
+  const compressed = lzEncode(getPayload());
+  updateHash(compressed);
+  render();
+}
+
+function cancelEdit(idx) {
+  const area = document.getElementById('edit-area-' + idx);
+  if (area) area.innerHTML = '';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+function openAboutModal() {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:480px;">
+        <h2>about urlDB</h2>
+        <div style="font-size:13px;color:#333;line-height:1.7;">
+          <p style="margin-bottom:12px;">a bare-bones link &amp; text sharing app with <strong>no backend</strong>. your data is compressed and encoded directly into the URL itself — the URL <em>is</em> the database.</p>
+          <p style="margin-bottom:12px;"><strong>how it works:</strong> everything you add gets LZ-compressed and stored in the URL hash. when someone opens that URL, the data is decompressed and displayed. optionally, you can encrypt it with a password using AES-256-GCM.</p>
+          <p style="margin-bottom:12px;"><strong>why it works:</strong> while a safe URL limit is ~2,000 characters, browsers can technically handle far more. Chrome supports up to 2MB (2,097,152 characters) — enough for ~20,000 short links. there is no strict max length defined by the HTTP protocol itself.</p>
+          <p style="margin-bottom:12px;color:#555;font-size:12px;"><strong>limits by platform:</strong> Chrome 2MB, Firefox 65K+, Safari 80K+, Apache ~8K, Cloudflare/Azure 16KB, AWS 8K. your mileage may vary depending on the sharing medium.</p>
+          <p style="margin-bottom:0;"><a href="https://github.com/noodlebreak/url-db" target="_blank" rel="noopener" style="color:#185FA5;">view on github</a></p>
+        </div>
+        <div class="modal-actions" style="margin-top:16px;">
+          <button class="modal-btn" onclick="closeModal()">close</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openCopyModal() {
+  if (!items.length) { showToast('nothing to share yet'); return; }
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h2>copy shareable url</h2>
+        <p>how do you want to share your data?</p>
+        <div class="modal-option-row">
+          <div class="modal-option selected" id="opt-plain" onclick="selectCopyOpt('plain')">
+            <div class="modal-option-title">plain</div>
+            <div class="modal-option-desc">no password, anyone with the url can view</div>
+          </div>
+          <div class="modal-option" id="opt-secure" onclick="selectCopyOpt('secure')">
+            <div class="modal-option-title">secure</div>
+            <div class="modal-option-desc">encrypted, password required to view</div>
+          </div>
+        </div>
+        <div id="pw-field" style="display:none">
+          <input class="modal-input" type="password" id="copy-pw" placeholder="enter password…" onkeydown="if(event.key==='Enter')confirmCopy()" />
+          <div class="modal-error" id="copy-err"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn-outline" onclick="closeModal()">cancel</button>
+          <button class="modal-btn" onclick="confirmCopy()">copy url</button>
+        </div>
+      </div>
+    </div>`;
+
+  window.selectCopyOpt = (opt) => {
+    document.getElementById('opt-plain').className = 'modal-option' + (opt === 'plain' ? ' selected' : '');
+    document.getElementById('opt-secure').className = 'modal-option' + (opt === 'secure' ? ' selected' : '');
+    document.getElementById('pw-field').style.display = opt === 'secure' ? 'block' : 'none';
+    if (opt === 'secure') setTimeout(() => document.getElementById('copy-pw')?.focus(), 50);
+  };
+
+  window.confirmCopy = async () => {
+    const selected = document.getElementById('opt-secure').classList.contains('selected') ? 'secure' : 'plain';
+    if (selected === 'plain') {
+      const compressed = lzEncode(getPayload());
+      const url = window.location.origin + window.location.pathname + '#' + compressed;
+      await navigator.clipboard.writeText(url);
+      closeModal(); showToast('plain url copied!');
+    } else {
+      const pw = document.getElementById('copy-pw').value;
+      if (!pw) { document.getElementById('copy-err').textContent = 'please enter a password'; return; }
+      const hash = await encryptPayload(pw, getPayload());
+      const url = window.location.origin + window.location.pathname + '#' + hash;
+      await navigator.clipboard.writeText(url);
+      updateHash(hash); currentlyEncrypted = true; renderBadge();
+      closeModal(); showToast('secure url copied!');
+    }
+  };
+}
+
+function newDb() {
+  items = []; schemeMap = {}; currentlyEncrypted = false;
+  history.replaceState(null, '', window.location.pathname);
+  closeModal(); render(); updateSizeBar('');
+}
+
+function openDecryptModal(hash) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="overlay">
+      <div class="modal">
+        <h2>this link is encrypted</h2>
+        <p>enter the password to view its contents.</p>
+        <input class="modal-input" type="password" id="dec-pw" placeholder="enter password…" onkeydown="if(event.key==='Enter')tryDecrypt()" />
+        <div class="modal-error" id="dec-err"></div>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn-outline" onclick="newDb()" title="discard this url and start fresh">new db</button>
+          <button class="modal-btn" onclick="tryDecrypt()">unlock</button>
+        </div>
+      </div>
+    </div>`;
+
+  window.tryDecrypt = async () => {
+    const pw = document.getElementById('dec-pw').value;
+    const data = await decryptPayload(pw, hash);
+    if (!data || !Array.isArray(data.i)) {
+      const inp = document.getElementById('dec-pw');
+      inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
+      document.getElementById('dec-err').textContent = 'incorrect password, try again';
+      inp.value = ''; inp.focus();
+      return;
+    }
+    items = data.i; currentlyEncrypted = true;
+    updateSizeBar(lzEncode(getPayload()));
+    closeModal(); renderBadge(); render();
+  };
+  setTimeout(() => document.getElementById('dec-pw')?.focus(), 50);
+}
+
+function renderBadge() {
+  document.getElementById('encrypted-badge-wrap').innerHTML = currentlyEncrypted
+    ? `<div class="encrypted-badge"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#185FA5" stroke-width="2"><rect x="3" y="7" width="10" height="8" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg>loaded from encrypted url</div>`
+    : '';
+}
+
+function render() {
+  const container = document.getElementById('items-container');
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-state">no items yet — add a link or text above</div>';
+    return;
+  }
+  const linkIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#378ADD" stroke-width="1.5"><path d="M7 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V9"/><path d="M10 2h4v4"/><path d="M8 8L14 2"/></svg>`;
+  const textIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#378ADD" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>`;
+  const editIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#185FA5" stroke-width="1.5"><path d="M11.5 2.5l2 2L5 13H3v-2l8.5-8.5z"/></svg>`;
+  const deleteIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#A32D2D" stroke-width="1.5"><path d="M2.5 4h11"/><path d="M5.5 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4"/><path d="M4 4l.7 9.2a1 1 0 0 0 1 .8h4.6a1 1 0 0 0 1-.8L12 4"/><path d="M6.5 7v4M9.5 7v4"/></svg>`;
+  container.innerHTML = '<div class="items-list">' + items.map((item, idx) => {
+    const [content, ts] = item;
+    const url = isUrl(content);
+    const scheme = schemeMap[idx] || 'https';
+    const mainContent = url
+      ? `<a href="${scheme}://${content}" target="_blank" rel="noopener">${content}</a>
+         <button class="http-toggle" onclick="toggleScheme(${idx})">${scheme === 'https' ? 'http?' : 'https?'}</button>`
+      : `<span>${content}</span>`;
+    return `<div class="item-card">
+      <div class="item-icon">${url ? linkIcon : textIcon}</div>
+      <div class="item-content">
+        <div class="item-main">${mainContent}</div>
+        <div class="item-meta">${b36toDate(ts)}</div>
+        <div class="item-edit-area" id="edit-area-${idx}"></div>
+      </div>
+      <div class="item-actions">
+        <button class="item-action-btn" onclick="startEdit(${idx})" title="edit">${editIcon}</button>
+        <button class="item-action-btn delete" onclick="deleteItem(${idx})" title="delete">${deleteIcon}</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+async function loadFromHash() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) { render(); updateStats(); return; }
+  if (hash.startsWith('v2.')) {
+    openDecryptModal(hash);
+  } else {
+    const data = lzDecode(hash);
+    if (data && data.v === 1 && Array.isArray(data.i)) {
+      items = data.i;
+      updateSizeBar(lzEncode(getPayload()));
+    }
+    render();
+  }
+}
+
+function newDb() {
+  items = []; schemeMap = {}; currentlyEncrypted = false;
+  history.replaceState(null, '', window.location.pathname);
+  closeModal(); render(); updateSizeBar('');
+}
+
+let pendingImportMode = 'plain';
+
+function triggerImport() {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h2>import file</h2>
+        <p>what kind of file are you importing?</p>
+        <div class="modal-option-row">
+          <div class="modal-option selected" id="opt-plain-import" onclick="selectImportOpt('plain')">
+            <div class="modal-option-title">plain text / json</div>
+            <div class="modal-option-desc">each line is an item, or a urlDB json export</div>
+          </div>
+          <div class="modal-option" id="opt-bookmarks-import" onclick="selectImportOpt('bookmarks')">
+            <div class="modal-option-title">browser bookmarks</div>
+            <div class="modal-option-desc">html export from chrome, firefox, or safari</div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn-outline" onclick="closeModal()">cancel</button>
+          <button class="modal-btn" onclick="confirmImportType()">choose file</button>
+        </div>
+      </div>
+    </div>`;
+
+  pendingImportMode = 'plain';
+
+  window.selectImportOpt = (opt) => {
+    document.getElementById('opt-plain-import').className = 'modal-option' + (opt === 'plain' ? ' selected' : '');
+    document.getElementById('opt-bookmarks-import').className = 'modal-option' + (opt === 'bookmarks' ? ' selected' : '');
+    pendingImportMode = opt;
+  };
+
+  window.confirmImportType = () => {
+    closeModal();
+    document.getElementById('import-file').value = '';
+    document.getElementById('import-file').click();
+  };
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const raw = ev.target.result.trim();
+    let added = 0;
+
+    if (pendingImportMode === 'bookmarks') {
+      const hrefRe = /<A\s[^>]*HREF="([^"]+)"[^>]*>/gi;
+      let match;
+      const ts = b36ts();
+      while ((match = hrefRe.exec(raw)) !== null) {
+        let url = match[1];
+        if (/^(https?:\/\/)/i.test(url)) {
+          items.push([stripScheme(url), ts]);
+          added++;
+        }
+      }
+    } else if (file.name.endsWith('.json')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error();
+        parsed.forEach(entry => {
+          if (!entry.content) return;
+          const content = isUrl(entry.content) ? stripScheme(entry.content) : entry.content;
+          items.push([content, entry._ts || b36ts()]);
+          added++;
+        });
+      } catch { showToast('invalid json file'); return; }
+    } else {
+      const ts = b36ts();
+      raw.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        items.push([isUrl(trimmed) ? stripScheme(trimmed) : trimmed, ts]);
+        added++;
+      });
+    }
+
+    if (added) {
+      updateHash(lzEncode(getPayload()));
+      render();
+      showToast(`imported ${added} item${added === 1 ? '' : 's'}`);
+    } else {
+      showToast('no items found in file');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function exportJson() {
+  if (!items.length) { showToast('nothing to export'); return; }
+  const data = items.map(([content, ts]) => ({
+    type: isUrl(content) ? 'url' : 'text',
+    content: isUrl(content) ? 'https://' + content : content,
+    added: b36toDate(ts),
+    _ts: ts
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'urlDB-export.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('exported!');
+}
+
+document.getElementById('content-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem(); } });
+loadFromHash();
+</script>
