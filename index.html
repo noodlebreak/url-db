@@ -37,7 +37,7 @@ h1 { font-size: 22px; font-weight: 500; color: var(--blue-800); letter-spacing: 
 .item-icon { width: 28px; height: 28px; border-radius: 6px; background: var(--blue-50); border: 1px solid var(--blue-100); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .item-icon svg { width: 14px; height: 14px; }
 .item-content { flex: 1; min-width: 0; }
-.item-main { font-size: 14px; color: var(--color-text-primary); word-break: break-all; }
+.item-main { font-size: 14px; color: var(--color-text-primary); word-break: break-all; white-space: pre-wrap; }
 .item-main a { color: var(--blue-600); text-decoration: none; }
 .item-main a:hover { text-decoration: underline; }
 .item-meta { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
@@ -72,6 +72,13 @@ h1 { font-size: 22px; font-weight: 500; color: var(--blue-800); letter-spacing: 
 .action-btn.danger { color: #A32D2D; border-color: #F7C1C1; }
 .action-btn.danger:hover { background: #FCEBEB; border-color: #F09595; }
 .action-spacer { flex: 1; }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.filter-bar.hidden { display: none; }
+.filter-input { flex: 1; min-width: 140px; padding: 8px 12px; font-size: 13px; border: 1px solid var(--blue-200); border-radius: 8px; background: var(--color-background-primary); color: var(--color-text-primary); outline: none; font-family: inherit; }
+.filter-input:focus { border-color: var(--blue-400); }
+.filter-input::placeholder { color: var(--color-text-tertiary); }
+.filter-select { padding: 8px 10px; font-size: 13px; border: 1px solid var(--blue-200); border-radius: 8px; background: #fff; color: var(--blue-800); font-family: inherit; cursor: pointer; max-width: 100%; }
+.filter-select:focus { border-color: var(--blue-400); outline: none; }
 .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--color-text-tertiary); font-size: 14px; border: 1px dashed var(--blue-100); border-radius: 8px; margin-bottom: 1.25rem; }
 .encrypted-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--blue-600); background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: 99px; padding: 2px 10px; margin-bottom: 1rem; }
 .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--blue-800); color: #fff; font-size: 13px; padding: 8px 18px; border-radius: 99px; transition: transform 0.25s; pointer-events: none; z-index: 999; }
@@ -111,7 +118,7 @@ h1 { font-size: 22px; font-weight: 500; color: var(--blue-800); letter-spacing: 
 <div id="app">
   <div class="sticky-header">
     <div class="header-row">
-      <h1>urlDB <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.13</span></h1>
+      <h1>urlDB <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.15</span></h1>
       <button class="about-link" onclick="openAboutModal()">about</button>
     </div>
     <p class="subtitle">paste links or text — your data lives in the url, no backend needed</p>
@@ -148,6 +155,22 @@ h1 { font-size: 22px; font-weight: 500; color: var(--blue-800); letter-spacing: 
       </button>
     </div>
   </div>
+  <div class="filter-bar hidden" id="filter-bar-wrap">
+    <input type="search" class="filter-input" id="list-filter" placeholder="filter list…" autocomplete="off" />
+    <select class="filter-select" id="list-type" title="show">
+      <option value="all">all types</option>
+      <option value="url">links only</option>
+      <option value="text">text only</option>
+    </select>
+    <select class="filter-select" id="list-sort" title="sort">
+      <option value="newest">newest first</option>
+      <option value="oldest">oldest first</option>
+      <option value="az">A → Z</option>
+      <option value="za">Z → A</option>
+      <option value="short">shortest first</option>
+      <option value="long">longest first</option>
+    </select>
+  </div>
   <div id="items-container"></div>
   <input type="file" id="import-file" accept=".txt,.json,.html,.htm" style="display:none" onchange="handleImport(event)" />
 </div>
@@ -160,6 +183,63 @@ const MAX_BYTES = 2 * 1024 * 1024;
 let items = [];
 let schemeMap = {};
 let currentlyEncrypted = false;
+let listFilterQuery = '';
+let listSort = 'newest';
+let listTypeFilter = 'all';
+
+function getFilteredSortedRows() {
+  const q = listFilterQuery.trim().toLowerCase();
+  let rows = items.map((item, index) => ({ index, item }));
+  if (listTypeFilter === 'url') rows = rows.filter((r) => isUrl(r.item[0]));
+  else if (listTypeFilter === 'text') rows = rows.filter((r) => !isUrl(r.item[0]));
+  if (q) rows = rows.filter((r) => r.item[0].toLowerCase().includes(q));
+  rows.sort((a, b) => {
+    const [ca, ta] = a.item;
+    const [cb, tb] = b.item;
+    const na = parseInt(ta, 36);
+    const nb = parseInt(tb, 36);
+    switch (listSort) {
+      case 'newest': return nb - na;
+      case 'oldest': return na - nb;
+      case 'az': return ca.localeCompare(cb, undefined, { sensitivity: 'base' });
+      case 'za': return cb.localeCompare(ca, undefined, { sensitivity: 'base' });
+      case 'short': return ca.length - cb.length;
+      case 'long': return cb.length - ca.length;
+      default: return 0;
+    }
+  });
+  return rows;
+}
+
+function syncFilterControls() {
+  const fi = document.getElementById('list-filter');
+  const st = document.getElementById('list-sort');
+  const ty = document.getElementById('list-type');
+  if (fi && document.activeElement !== fi) fi.value = listFilterQuery;
+  if (st) st.value = listSort;
+  if (ty) ty.value = listTypeFilter;
+}
+
+function setListFilter(v) {
+  listFilterQuery = v;
+  render();
+}
+
+function setListSort(v) {
+  listSort = v;
+  render();
+}
+
+function setListTypeFilter(v) {
+  listTypeFilter = v;
+  render();
+}
+
+function resetListFilters() {
+  listFilterQuery = '';
+  listSort = 'newest';
+  listTypeFilter = 'all';
+}
 
 function isUrl(str) {
   try { new URL('https://' + str); return str.includes('.') && !str.includes(' '); }
@@ -269,6 +349,7 @@ function addItem() {
 function clearAll() {
   if (!items.length) return;
   items = []; schemeMap = {}; currentlyEncrypted = false;
+  resetListFilters();
   updateHash(''); renderBadge(); render();
 }
 
@@ -409,6 +490,7 @@ function openCopyModal() {
 
 function newDb() {
   items = []; schemeMap = {}; currentlyEncrypted = false;
+  resetListFilters();
   history.replaceState(null, '', window.location.pathname);
   closeModal(); render(); updateSizeBar('');
 }
@@ -454,15 +536,25 @@ function renderBadge() {
 
 function render() {
   const container = document.getElementById('items-container');
+  const filterWrap = document.getElementById('filter-bar-wrap');
   if (!items.length) {
+    if (filterWrap) filterWrap.classList.add('hidden');
     container.innerHTML = '<div class="empty-state">no items yet — add a link or text above</div>';
+    syncFilterControls();
     return;
   }
+  if (filterWrap) filterWrap.classList.remove('hidden');
+  const rows = getFilteredSortedRows();
   const linkIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#378ADD" stroke-width="1.5"><path d="M7 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V9"/><path d="M10 2h4v4"/><path d="M8 8L14 2"/></svg>`;
   const textIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#378ADD" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>`;
   const editIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#185FA5" stroke-width="1.5"><path d="M11.5 2.5l2 2L5 13H3v-2l8.5-8.5z"/></svg>`;
   const deleteIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="#A32D2D" stroke-width="1.5"><path d="M2.5 4h11"/><path d="M5.5 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4"/><path d="M4 4l.7 9.2a1 1 0 0 0 1 .8h4.6a1 1 0 0 0 1-.8L12 4"/><path d="M6.5 7v4M9.5 7v4"/></svg>`;
-  container.innerHTML = '<div class="items-list">' + items.map((item, idx) => {
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty-state">no items match your filter — try another search or reset the type filter</div>';
+    syncFilterControls();
+    return;
+  }
+  container.innerHTML = '<div class="items-list">' + rows.map(({ index: idx, item }) => {
     const [content, ts] = item;
     const url = isUrl(content);
     const scheme = schemeMap[idx] || 'https';
@@ -483,6 +575,7 @@ function render() {
       </div>
     </div>`;
   }).join('') + '</div>';
+  syncFilterControls();
 }
 
 async function loadFromHash() {
@@ -498,12 +591,6 @@ async function loadFromHash() {
     }
     render();
   }
-}
-
-function newDb() {
-  items = []; schemeMap = {}; currentlyEncrypted = false;
-  history.replaceState(null, '', window.location.pathname);
-  closeModal(); render(); updateSizeBar('');
 }
 
 let pendingImportMode = 'plain';
@@ -616,5 +703,13 @@ function exportJson() {
 }
 
 document.getElementById('content-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem(); } });
+(function bindFilterBar() {
+  const fi = document.getElementById('list-filter');
+  const st = document.getElementById('list-sort');
+  const ty = document.getElementById('list-type');
+  if (fi) fi.addEventListener('input', function() { setListFilter(this.value); });
+  if (st) st.addEventListener('change', function() { setListSort(this.value); });
+  if (ty) ty.addEventListener('change', function() { setListTypeFilter(this.value); });
+})();
 loadFromHash();
 </script>
