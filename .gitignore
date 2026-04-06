@@ -53,3 +53,6 @@ ehthumbs.db
 Desktop.ini
 
 bookmark*
+
+# Local-only docs (not tracked)
+GA4-EVENTS.md
