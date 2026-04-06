@@ -141,7 +141,7 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
 <div id="app">
   <div class="sticky-header">
     <div class="header-row">
-      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.22</span></h1>
+      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.23</span></h1>
       <button class="about-link" onclick="openAboutModal()">about</button>
     </div>
     <p class="subtitle">paste links or text — your data lives in the url, no backend; secure sharing via password-protected URLs</p>
@@ -203,6 +203,22 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
 
 <script>
 const MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * GA4 custom events — never send location.hash or secrets.
+ * Events: page_view, item_*, clear_all, copy_url_*, import_*, export_click, filter_change,
+ * about_open, decrypt_*, title_click_new_tab
+ */
+function gaEvent(eventName, params) {
+  if (typeof gtag === 'function') {
+    gtag('event', eventName, params || {});
+  }
+}
+
+function emitFilterChange() {
+  gaEvent('filter_change', { sort: listSort, type_filter: listTypeFilter });
+}
+
 let items = [];
 let schemeMap = {};
 let currentlyEncrypted = false;
@@ -245,16 +261,19 @@ function syncFilterControls() {
 
 function setListFilter(v) {
   listFilterQuery = v;
+  emitFilterChange();
   render();
 }
 
 function setListSort(v) {
   listSort = v;
+  emitFilterChange();
   render();
 }
 
 function setListTypeFilter(v) {
   listTypeFilter = v;
+  emitFilterChange();
   render();
 }
 
@@ -366,6 +385,7 @@ function addItem() {
   input.value = '';
   const compressed = lzEncode(getPayload());
   updateHash(compressed);
+  gaEvent('item_add', { item_count: items.length });
   render();
   input.focus();
 }
@@ -375,6 +395,7 @@ function clearAll() {
   items = []; schemeMap = {}; currentlyEncrypted = false;
   resetListFilters();
   updateHash(''); renderBadge(); render();
+  gaEvent('clear_all');
 }
 
 function toggleScheme(idx) {
@@ -394,6 +415,7 @@ function deleteItem(idx) {
   schemeMap = newMap;
   const compressed = items.length ? lzEncode(getPayload()) : '';
   updateHash(compressed);
+  gaEvent('item_delete');
   render();
 }
 
@@ -421,6 +443,7 @@ function saveEdit(idx) {
   items[idx][0] = isUrl(val) ? stripScheme(val) : val;
   const compressed = lzEncode(getPayload());
   updateHash(compressed);
+  gaEvent('item_edit');
   render();
 }
 
@@ -438,6 +461,7 @@ function showToast(msg) {
 function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
 
 function openAboutModal() {
+  gaEvent('about_open');
   const root = document.getElementById('modal-root');
   root.innerHTML = `
     <div class="overlay" onclick="if(event.target===this)closeModal()">
@@ -473,6 +497,7 @@ function openAboutModal() {
 
 function openCopyModal() {
   if (!items.length) { showToast('nothing to share yet'); return; }
+  gaEvent('copy_url_open');
   const root = document.getElementById('modal-root');
   root.innerHTML = `
     <div class="overlay" onclick="if(event.target===this)closeModal()">
@@ -513,6 +538,7 @@ function openCopyModal() {
       const compressed = lzEncode(getPayload());
       const url = window.location.origin + window.location.pathname + '#' + compressed;
       await navigator.clipboard.writeText(url);
+      gaEvent('copy_url_plain', { item_count: items.length });
       closeModal(); showToast('plain url copied!');
     } else {
       const pw = document.getElementById('copy-pw').value;
@@ -520,6 +546,7 @@ function openCopyModal() {
       const hash = await encryptPayload(pw, getPayload());
       const url = window.location.origin + window.location.pathname + '#' + hash;
       await navigator.clipboard.writeText(url);
+      gaEvent('copy_url_secure', { item_count: items.length });
       updateHash(hash); currentlyEncrypted = true; renderBadge();
       closeModal(); showToast('secure url copied!');
     }
@@ -527,6 +554,7 @@ function openCopyModal() {
 }
 
 function openAppHomeInNewTab() {
+  gaEvent('title_click_new_tab');
   const u = new URL(window.location.href);
   u.hash = '';
   window.open(u.href, '_blank', 'noopener,noreferrer');
@@ -556,9 +584,11 @@ function openDecryptModal(hash) {
     </div>`;
 
   window.tryDecrypt = async () => {
+    gaEvent('decrypt_attempt');
     const pw = document.getElementById('dec-pw').value;
     const data = await decryptPayload(pw, hash);
     if (!data || !Array.isArray(data.i)) {
+      gaEvent('decrypt_fail');
       const inp = document.getElementById('dec-pw');
       inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
       document.getElementById('dec-err').textContent = 'incorrect password, try again';
@@ -566,6 +596,7 @@ function openDecryptModal(hash) {
       return;
     }
     items = data.i; currentlyEncrypted = true;
+    gaEvent('decrypt_success', { item_count: items.length });
     updateSizeBar(lzEncode(getPayload()));
     closeModal(); renderBadge(); render();
   };
@@ -624,6 +655,14 @@ function render() {
 
 async function loadFromHash() {
   const hash = window.location.hash.slice(1);
+  let hash_kind = 'empty';
+  let has_hash = false;
+  if (hash) {
+    has_hash = true;
+    hash_kind = hash.startsWith('v2.') ? 'encrypted' : 'plain';
+  }
+  gaEvent('page_view', { has_hash, hash_kind });
+
   if (!hash) { render(); updateStats(); return; }
   if (hash.startsWith('v2.')) {
     openDecryptModal(hash);
@@ -640,6 +679,7 @@ async function loadFromHash() {
 let pendingImportMode = 'plain';
 
 function triggerImport() {
+  gaEvent('import_open');
   const root = document.getElementById('modal-root');
   root.innerHTML = `
     <div class="overlay" onclick="if(event.target===this)closeModal()">
@@ -685,8 +725,10 @@ function handleImport(e) {
   reader.onload = (ev) => {
     const raw = ev.target.result.trim();
     let added = 0;
+    let format = 'txt';
 
     if (pendingImportMode === 'bookmarks') {
+      format = 'bookmarks';
       const hrefRe = /<A\s[^>]*HREF="([^"]+)"[^>]*>/gi;
       let match;
       const ts = b36ts();
@@ -698,6 +740,7 @@ function handleImport(e) {
         }
       }
     } else if (file.name.endsWith('.json')) {
+      format = 'json';
       try {
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) throw new Error();
@@ -707,8 +750,13 @@ function handleImport(e) {
           items.push([content, entry._ts || b36ts()]);
           added++;
         });
-      } catch { showToast('invalid json file'); return; }
+      } catch {
+        gaEvent('import_fail', { format: 'json' });
+        showToast('invalid json file');
+        return;
+      }
     } else {
+      format = 'txt';
       const ts = b36ts();
       raw.split('\n').forEach(line => {
         const trimmed = line.trim();
@@ -721,8 +769,10 @@ function handleImport(e) {
     if (added) {
       updateHash(lzEncode(getPayload()));
       render();
+      gaEvent('import_success', { format, item_count: added });
       showToast(`imported ${added} item${added === 1 ? '' : 's'}`);
     } else {
+      gaEvent('import_fail', { format });
       showToast('no items found in file');
     }
   };
@@ -731,6 +781,7 @@ function handleImport(e) {
 
 function exportJson() {
   if (!items.length) { showToast('nothing to export'); return; }
+  gaEvent('export_click', { item_count: items.length });
   const data = items.map(([content, ts]) => ({
     type: isUrl(content) ? 'url' : 'text',
     content: isUrl(content) ? 'https://' + content : content,
