@@ -25,7 +25,8 @@ h1 .app-title-btn:hover { color: var(--blue-600); }
 h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-offset: 2px; }
 .about-link { font-size: 12px; font-weight: 500; color: var(--blue-400); cursor: pointer; background: none; border: 1px solid var(--blue-100); padding: 4px 10px; border-radius: 6px; font-family: inherit; transition: background 0.15s, border-color 0.15s; }
 .about-link:hover { background: var(--blue-50); border-color: var(--blue-400); }
-.subtitle { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+.subtitle1 { font-size: 13px; color: var(--color-text-secondary); margin-bottom: .05rem; }
+.subtitle2 { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
 .input-row { display: flex; gap: 8px; margin-bottom: 1rem; align-items: flex-start; }
 #content-input { flex: 1; padding: 10px 14px; font-size: 14px; border: 1px solid var(--blue-200); border-radius: 8px; background: var(--color-background-primary); color: var(--color-text-primary); outline: none; transition: border-color 0.15s; resize: both; min-height: 42px; max-height: 200px; font-family: inherit; field-sizing: content; }
 #content-input:focus { border-color: var(--blue-400); }
@@ -141,10 +142,11 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
 <div id="app">
   <div class="sticky-header">
     <div class="header-row">
-      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.23</span></h1>
+      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.24</span></h1>
       <button class="about-link" onclick="openAboutModal()">about</button>
     </div>
-    <p class="subtitle">paste links or text — your data lives in the url, no backend; secure sharing via password-protected URLs</p>
+    <p class="subtitle1">paste links or text — your data lives in the url, no backend, no cloud storage</p>
+    <p class="subtitle2">secure sharing via password-protected URLs</p>
     <div id="encrypted-badge-wrap"></div>
     <div class="input-row">
       <textarea id="content-input" rows="1" placeholder="paste a link or type some text…"></textarea>
@@ -179,7 +181,7 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
     </div>
   </div>
   <div class="filter-bar hidden" id="filter-bar-wrap">
-    <input type="search" class="filter-input" id="list-filter" placeholder="filter list…" autocomplete="off" />
+    <input type="search" class="filter-input" id="list-filter" placeholder="search…" autocomplete="off" />
     <select class="filter-select" id="list-type" title="show">
       <option value="all">all types</option>
       <option value="url">links only</option>
