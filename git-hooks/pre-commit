@@ -1,0 +1,20 @@
+#!/bin/bash
+
+FILE="index.html"
+
+if ! git diff --cached --name-only | grep -q "^${FILE}$"; then
+  exit 0
+fi
+
+CURRENT=$(grep -oP 'v\K[0-9]+\.[0-9]+' "$FILE" | head -1)
+if [ -z "$CURRENT" ]; then
+  exit 0
+fi
+
+MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+MINOR=$(echo "$CURRENT" | cut -d. -f2)
+NEW_MINOR=$((MINOR + 1))
+NEW_VERSION="${MAJOR}.${NEW_MINOR}"
+
+sed -i "s/v${CURRENT}/v${NEW_VERSION}/" "$FILE"
+git add "$FILE"

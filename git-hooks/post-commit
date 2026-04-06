@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# After each successful commit: push to origin, then deploy with pico.
+# Skip with: SKIP_POST_COMMIT_PUSH=1 git commit ...
+
+set -euo pipefail
+
+if [ -n "${SKIP_POST_COMMIT_PUSH:-}" ]; then
+  exit 0
+fi
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" = "HEAD" ]; then
+  echo "post-commit: detached HEAD — skipping push and pico"
+  exit 0
+fi
+
+echo "post-commit: pushing ${branch}…"
+git push
+
+echo "post-commit: running pico-command.sh…"
+bash "$root/pico-command.sh"
