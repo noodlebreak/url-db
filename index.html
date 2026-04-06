@@ -1,5 +1,15 @@
 <!-- https://github.com/noodlebreak/url-db -->
 <meta charset="UTF-8">
+<!-- GA4: replace G-XXXXXXXXXX with your Measurement ID (Admin → Data streams). Never send location.hash — it can contain user data. -->
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-GELGF13Z9T"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { dataLayer.push(arguments); }
+  gtag('js', new Date());
+
+  gtag('config', 'G-GELGF13Z9T');
+</script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -131,7 +141,7 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
 <div id="app">
   <div class="sticky-header">
     <div class="header-row">
-      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.21</span></h1>
+      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.22</span></h1>
       <button class="about-link" onclick="openAboutModal()">about</button>
     </div>
     <p class="subtitle">paste links or text — your data lives in the url, no backend; secure sharing via password-protected URLs</p>
