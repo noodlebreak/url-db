@@ -1,4 +1,6 @@
 #!/bin/bash
+# When index.html is committed, bump vX.Y in the header (minor +1).
+# Uses POSIX-friendly patterns so it runs on Linux and macOS (no grep -P).
 
 FILE="index.html"
 
@@ -6,7 +8,7 @@ if ! git diff --cached --name-only | grep -q "^${FILE}$"; then
   exit 0
 fi
 
-CURRENT=$(grep -oP 'v\K[0-9]+\.[0-9]+' "$FILE" | head -1)
+CURRENT=$(grep -oE 'v[0-9]+\.[0-9]+' "$FILE" | head -1 | sed 's/^v//')
 if [ -z "$CURRENT" ]; then
   exit 0
 fi
@@ -16,5 +18,9 @@ MINOR=$(echo "$CURRENT" | cut -d. -f2)
 NEW_MINOR=$((MINOR + 1))
 NEW_VERSION="${MAJOR}.${NEW_MINOR}"
 
-sed -i "s/v${CURRENT}/v${NEW_VERSION}/" "$FILE"
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+sed "s/v${CURRENT}/v${NEW_VERSION}/g" "$FILE" > "$tmp" && mv "$tmp" "$FILE"
+trap - EXIT
+
 git add "$FILE"
