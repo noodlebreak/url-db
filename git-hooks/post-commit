@@ -18,7 +18,7 @@ if [ "$branch" = "HEAD" ]; then
 fi
 
 echo "post-commit: pushing ${branch}…"
-git push
+git push -u origin "$branch"
 
 echo "post-commit: running pico-command.sh…"
 bash "$root/pico-command.sh"
