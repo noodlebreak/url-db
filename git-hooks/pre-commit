@@ -1,10 +1,11 @@
 #!/bin/bash
-# When index.html is committed, bump vX.Y in the header (minor +1).
-# Uses POSIX-friendly patterns so it runs on Linux and macOS (no grep -P).
+# When index.html has staged changes vs HEAD, bump vX.Y in the header (minor +1).
+# Uses git diff --cached HEAD (not --name-only) so we catch real content changes;
+# plain "git add index.html" when unchanged does not trigger a bump.
 
 FILE="index.html"
 
-if ! git diff --cached --name-only | grep -q "^${FILE}$"; then
+if [ -z "$(git diff --cached HEAD -- "$FILE" 2>/dev/null)" ]; then
   exit 0
 fi
 
