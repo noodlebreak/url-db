@@ -131,7 +131,7 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
 <div id="app">
   <div class="sticky-header">
     <div class="header-row">
-      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.19</span></h1>
+      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.20</span></h1>
       <button class="about-link" onclick="openAboutModal()">about</button>
     </div>
     <p class="subtitle">paste links or text — your data lives in the url, no backend needed</p>
@@ -258,6 +258,7 @@ function isUrl(str) {
   try { new URL('https://' + str); return str.includes('.') && !str.includes(' '); }
   catch { return false; }
 }
+
 function stripScheme(str) { return str.replace(/^https?:\/\//i, ''); }
 function b36ts() { return Math.floor(Date.now() / 1000).toString(36); }
 function b36toDate(b36) {
