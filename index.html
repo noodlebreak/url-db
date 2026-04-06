@@ -103,6 +103,16 @@ h1 { font-size: 22px; font-weight: 500; color: var(--blue-800); letter-spacing: 
 .modal-btn-outline { background: #fff; color: #185FA5; border: 1.5px solid #B5D4F4; }
 .modal-btn-outline:hover { background: #E6F1FB; border-color: #378ADD; }
 
+.about-modal.modal { max-width: min(92vw, 760px); }
+.about-modal h2 { font-size: 22px; margin-bottom: 10px; }
+.about-modal-body { font-size: 15px; line-height: 1.65; color: #333; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+.about-modal-body h3 { font-size: 17px; font-weight: 600; color: #0C447C; margin: 18px 0 8px; }
+.about-modal-body p { font-size: inherit; line-height: inherit; margin-bottom: 12px; color: #333; }
+.about-modal-body ul { margin: 0 0 14px 1.15em; padding: 0; line-height: 1.6; list-style: disc; }
+.about-modal-body ul li { margin-bottom: 6px; }
+.about-modal-body ul li:last-child { margin-bottom: 0; }
+.about-modal-body .about-limits { color: #555; font-size: 13px; }
+
 @keyframes shake {
   0%,100% { transform: translateX(0); }
   20% { transform: translateX(-8px); }
@@ -417,27 +427,27 @@ function openAboutModal() {
   const root = document.getElementById('modal-root');
   root.innerHTML = `
     <div class="overlay" onclick="if(event.target===this)closeModal()">
-      <div class="modal" style="max-width:520px;">
+      <div class="modal about-modal">
         <h2>about urlDB</h2>
-        <div style="font-size:13px;color:#333;line-height:1.7;">
-          <p style="margin-bottom:12px;">a bare-bones link &amp; text sharing app with <strong>no backend</strong>. your data is compressed and encoded directly into the URL itself — the URL <em>is</em> the database.</p>
-          <h3 style="font-size:15px;font-weight:600;color:#0C447C;margin:18px 0 8px;">Why</h3>
-          <p style="margin-bottom:12px;">I just wanted to create something nice over the weekend. Wanted to create something that could be shipped, be useful, at least to me.</p>
-          <p style="margin-bottom:12px;">Don't exactly remember how I landed on the idea but I had searched in google if URL has a limit. Turns out it didn't.<br />So I wanted to build something off taking advantage of that.</p>
-          <p style="margin-bottom:12px;">I have already built a tonne of todo/note/project management etc apps but I always get a headache when we have to connect them to a DB - means we have to pay for it ultimately and manage it and it's just... extra burden in maintaining a project for simple needs</p>
-          <p style="margin-bottom:12px;">I wanted something where I can just take the data with me and still access it nicely formatted with full application features.</p>
+        <div class="about-modal-body">
+          <p>a bare-bones link &amp; text sharing app with <strong>no backend</strong>. your data is compressed and encoded directly into the URL itself — the URL <em>is</em> the database.</p>
+          <h3>Why</h3>
+          <p>I just wanted to create something nice over the weekend. Wanted to create something that could be shipped, be useful, at least to me.</p>
+          <p>Don't exactly remember how I landed on the idea but I had searched in google if URL has a limit. Turns out it didn't.<br />So I wanted to build something off taking advantage of that.</p>
+          <p>I have already built a tonne of todo/note/project management etc apps but I always get a headache when we have to connect them to a DB - means we have to pay for it ultimately and manage it and it's just... extra burden in maintaining a project for simple needs</p>
+          <p>I wanted something where I can just take the data with me and still access it nicely formatted with full application features.</p>
           <p style="margin-bottom:8px;"><strong>urlDB can do this:</strong></p>
-          <ul style="margin:0 0 14px 1.15em;padding:0;line-height:1.55;list-style:disc;">
-            <li style="margin-bottom:6px;">data is in the URL, so you don't have to "sync" between devices - just open the copied url anywhere - you'll get all your data no problems. and with security</li>
-            <li style="margin-bottom:6px;">no login no signup required - small simple apps requiring these are instant turn off for me</li>
-            <li style="margin-bottom:6px;">no trackers - as of yet - I do plan to add some to see how people are using it - won't hurt your privacy</li>
-            <li style="margin-bottom:6px;">your data is secure if the algo encrypting is secure and you believe it</li>
-            <li style="margin-bottom:0;">simple, aesthetic (yeah I know it's subjective), easy to use, and fast loading - no unnecessary dependencies</li>
+          <ul>
+            <li>data is in the URL, so you don't have to "sync" between devices - just open the copied url anywhere - you'll get all your data no problems. and with security</li>
+            <li>no login no signup required - small simple apps requiring these are instant turn off for me</li>
+            <li>no trackers - as of yet - I do plan to add some to see how people are using it - won't hurt your privacy</li>
+            <li>your data is secure if the algo encrypting is secure and you believe it</li>
+            <li>simple, aesthetic (yeah I know it's subjective), easy to use, and fast loading - no unnecessary dependencies except lz-string</li>
           </ul>
-          <p style="margin-bottom:12px;">So I made this. And I'm happy I made it - something feature complete to be completely useful - although I will be adding more and more features to this and extend its core concept to more applications.</p>
-          <p style="margin-bottom:12px;"><strong>how it works:</strong> everything you add gets LZ-compressed and stored in the URL hash. when someone opens that URL, the data is decompressed and displayed. optionally, you can encrypt it with a password using AES-256-GCM.</p>
-          <p style="margin-bottom:12px;"><strong>why it works:</strong> while a safe URL limit is ~2,000 characters, browsers can technically handle far more. Chrome supports up to 2MB (2,097,152 characters) — enough for ~20,000 short links. there is no strict max length defined by the HTTP protocol itself.</p>
-          <p style="margin-bottom:12px;color:#555;font-size:12px;"><strong>limits by platform:</strong> Chrome 2MB, Firefox 65K+, Safari 80K+, Apache ~8K, Cloudflare/Azure 16KB, AWS 8K. your mileage may vary depending on the sharing medium.</p>
+          <p>So I made this. And I'm happy I made it - something feature complete to be completely useful - although I will be adding more and more features to this and extend its core concept to more applications.</p>
+          <p><strong>how it works:</strong> everything you add gets LZ-compressed and stored in the URL hash. when someone opens that URL, the data is decompressed and displayed. optionally, you can encrypt it with a password using AES-256-GCM.</p>
+          <p><strong>why it works:</strong> while a safe URL limit is ~2,000 characters, browsers can technically handle far more. Chrome supports up to 2MB (2,097,152 characters) — enough for ~20,000 short links. there is no strict max length defined by the HTTP protocol itself.</p>
+          <p class="about-limits"><strong>limits by platform:</strong> Chrome 2MB, Firefox 65K+, Safari 80K+, Apache ~8K, Cloudflare/Azure 16KB, AWS 8K. your mileage may vary depending on the sharing medium.</p>
           <p style="margin-bottom:0;"><a href="https://github.com/noodlebreak/url-db" target="_blank" rel="noopener" style="color:#185FA5;">view on github</a></p>
         </div>
         <div class="modal-actions" style="margin-top:16px;">
