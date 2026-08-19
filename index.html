@@ -135,14 +135,26 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
   80% { transform: translateX(5px); }
 }
 .shake { animation: shake 0.4s ease; }
+
+.share-status {
+  font-size: 14px; color: #0C447C; background: #E6F1FB; border: 1.5px solid #B5D4F4;
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 1rem; line-height: 1.45;
+}
+.share-status .share-kicker { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: #185FA5; margin-bottom: 4px; }
+.qr-preview { display: flex; justify-content: center; margin: 0 0 1rem; }
+.qr-preview canvas { width: 220px; height: 220px; max-width: 100%; border-radius: 8px; background: #fff; border: 1px solid #B5D4F4; }
+.share-secure-wrap { border-top: 1px solid #B5D4F4; padding-top: 14px; }
+.share-secure-hint { font-size: 13px; color: #555; margin-bottom: 10px; }
+.share-copied-note { font-size: 13px; color: #185FA5; min-height: 18px; margin: 6px 0 0; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 
 <div id="app">
   <div class="sticky-header">
     <div class="header-row">
-      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.26</span></h1>
+      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.27</span></h1>
       <button class="about-link" onclick="openAboutModal()">about</button>
     </div>
     <p class="subtitle1">paste links or text — your data lives in the url, no backend, no cloud storage</p>
@@ -164,6 +176,10 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
       <button class="action-btn primary" onclick="openCopyModal()" title="copy shareable url">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5l-3-3z"/><path d="M10 2v3h3"/></svg>
         copy url
+      </button>
+      <button class="action-btn" onclick="openCopyQrModal()" title="copy shareable qr code">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2z"/><path d="M9 9h2v2H9zM12 9h2v2h-2zM9 12h2v2H9zM12 12h2v2h-2z"/></svg>
+        copy qr
       </button>
       <button class="action-btn" onclick="triggerImport()" title="import txt or json">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg>
@@ -208,7 +224,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
 
 /**
  * GA4 custom events — never send location.hash or secrets.
- * Events: page_view, item_*, clear_all, copy_url_*, import_*, export_click, filter_change,
+ * Events: page_view, item_*, clear_all, copy_url_*, copy_qr_*, import_*, export_click, filter_change,
  * about_open, decrypt_*, title_click_new_tab
  */
 function gaEvent(eventName, params) {
@@ -351,9 +367,76 @@ async function decryptPayload(password, hash) {
   }
 }
 
-function getPayload() { return { v: 1, i: items }; }
+const DRAFT_IDLE_MS = 1200;
+const DRAFT_MAX_WAIT_MS = 5000;
+const DRAFT_SS_KEY = 'urldb-draft';
+
+let draftIdleTimer = null;
+let draftMaxTimer = null;
+let lastWrittenHash = null;
+
+function getDraftText() {
+  return document.getElementById('content-input')?.value ?? '';
+}
+
+function persistDraftLocal(text) {
+  try {
+    if (text) sessionStorage.setItem(DRAFT_SS_KEY, text);
+    else sessionStorage.removeItem(DRAFT_SS_KEY);
+  } catch {}
+}
+
+function restoreDraftLocal() {
+  try {
+    const d = sessionStorage.getItem(DRAFT_SS_KEY);
+    const input = document.getElementById('content-input');
+    if (d != null && input && !input.value) input.value = d;
+  } catch {}
+}
+
+function getPayload() {
+  const payload = { v: 1, i: items };
+  const draft = getDraftText();
+  if (draft) payload.d = draft;
+  return payload;
+}
+
+function hasShareableData() {
+  return items.length > 0 || !!getDraftText().trim();
+}
+
+function cancelDraftTimers() {
+  clearTimeout(draftIdleTimer);
+  clearTimeout(draftMaxTimer);
+  draftIdleTimer = null;
+  draftMaxTimer = null;
+}
+
+function flushDraftToUrl() {
+  cancelDraftTimers();
+  persistDraftLocal(getDraftText());
+  if (currentlyEncrypted) return;
+  const payload = getPayload();
+  const compressed = (payload.i.length || payload.d) ? lzEncode(payload) : '';
+  if (compressed === lastWrittenHash) return;
+  lastWrittenHash = compressed;
+  updateHash(compressed);
+}
+
+function scheduleDraftSave() {
+  persistDraftLocal(getDraftText());
+  if (currentlyEncrypted) return;
+  clearTimeout(draftIdleTimer);
+  draftIdleTimer = setTimeout(flushDraftToUrl, DRAFT_IDLE_MS);
+  if (!draftMaxTimer) draftMaxTimer = setTimeout(flushDraftToUrl, DRAFT_MAX_WAIT_MS);
+}
+
+function buildShareUrl(hash) {
+  return window.location.origin + window.location.pathname + '#' + hash;
+}
 
 function updateHash(compressed) {
+  lastWrittenHash = compressed || '';
   history.replaceState(null, '', compressed ? '#' + compressed : window.location.pathname);
   updateSizeBar(compressed || '');
 }
@@ -383,8 +466,11 @@ function addItem() {
   const input = document.getElementById('content-input');
   const raw = input.value.trim();
   if (!raw) return;
+  cancelDraftTimers();
   items.push([isUrl(raw) ? stripScheme(raw) : raw, b36ts()]);
   input.value = '';
+  persistDraftLocal('');
+  currentlyEncrypted = false;
   const compressed = lzEncode(getPayload());
   updateHash(compressed);
   gaEvent('item_add', { item_count: items.length });
@@ -393,8 +479,12 @@ function addItem() {
 }
 
 function clearAll() {
-  if (!items.length) return;
+  if (!items.length && !getDraftText()) return;
+  cancelDraftTimers();
   items = []; schemeMap = {}; currentlyEncrypted = false;
+  const input = document.getElementById('content-input');
+  if (input) input.value = '';
+  persistDraftLocal('');
   resetListFilters();
   updateHash(''); renderBadge(); render();
   gaEvent('clear_all');
@@ -415,7 +505,9 @@ function deleteItem(idx) {
     else if (ki < idx) newMap[ki] = schemeMap[k];
   });
   schemeMap = newMap;
-  const compressed = items.length ? lzEncode(getPayload()) : '';
+  currentlyEncrypted = false;
+  const payload = getPayload();
+  const compressed = (payload.i.length || payload.d) ? lzEncode(payload) : '';
   updateHash(compressed);
   gaEvent('item_delete');
   render();
@@ -443,6 +535,7 @@ function saveEdit(idx) {
   const val = inp.value.trim();
   if (!val) return;
   items[idx][0] = isUrl(val) ? stripScheme(val) : val;
+  currentlyEncrypted = false;
   const compressed = lzEncode(getPayload());
   updateHash(compressed);
   gaEvent('item_edit');
@@ -482,7 +575,7 @@ function openAboutModal() {
             <li>no login no signup required - small simple apps requiring these are instant turn off for me</li>
             <li>no unnecessary trackers except google analytics - I do want to check how users are using the app</li>
             <li>your data is secure if the algo encrypting is secure and you believe it</li>
-            <li>simple, aesthetic (yeah I know it's subjective), easy to use, and fast loading - no unnecessary dependencies except lz-string</li>
+            <li>simple, aesthetic (yeah I know it's subjective), easy to use, and fast loading - no unnecessary dependencies except lz-string and qrcode</li>
           </ul>
           <p>So I made this. And I'm happy I made it - something feature complete to be completely useful - although I will be adding more and more features to this and extend its core concept to more applications.</p>
           <p><strong>how it works:</strong> everything you add gets LZ-compressed and stored in the URL hash. when someone opens that URL, the data is decompressed and displayed. optionally, you can encrypt it with a password using AES-256-GCM.</p>
@@ -498,61 +591,169 @@ function openAboutModal() {
 }
 
 function openCopyModal() {
-  if (!items.length) { showToast('nothing to share yet'); return; }
-  gaEvent('copy_url_open');
+  openShareModal('url');
+}
+
+function openCopyQrModal() {
+  openShareModal('qr');
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyBlobToClipboard(blob) {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function makeQrCanvas(url) {
+  const canvas = document.createElement('canvas');
+  await QRCode.toCanvas(canvas, url, {
+    errorCorrectionLevel: 'L',
+    margin: 1,
+    width: 512,
+    color: { dark: '#042C53', light: '#ffffff' }
+  });
+  return canvas;
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('png failed')), 'image/png');
+  });
+}
+
+function openShareModal(kind) {
+  flushDraftToUrl();
+  if (!hasShareableData()) {
+    showToast(kind === 'qr' ? 'nothing to encode yet' : 'nothing to share yet');
+    return;
+  }
+
+  const isQr = kind === 'qr';
+  gaEvent(isQr ? 'copy_qr_open' : 'copy_url_open');
   const root = document.getElementById('modal-root');
   root.innerHTML = `
     <div class="overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal">
-        <h2>copy shareable url</h2>
-        <p>how do you want to share your data?</p>
-        <div class="modal-option-row">
-          <div class="modal-option selected" id="opt-plain" onclick="selectCopyOpt('plain')">
-            <div class="modal-option-title">plain</div>
-            <div class="modal-option-desc">no password, anyone with the url can view</div>
+        <h2 id="share-title">${isQr ? 'copy qr' : 'copy url'}</h2>
+        <div class="share-status" id="share-status">
+          <div class="share-kicker" id="share-kicker">working…</div>
+          <div id="share-status-text">preparing the open link</div>
+        </div>
+        <div class="qr-preview" id="qr-preview" style="display:${isQr ? 'flex' : 'none'}"></div>
+        <div class="share-secure-wrap">
+          <p class="share-secure-hint">Want it locked? Copy a password-protected version instead.</p>
+          <div id="pw-field" style="display:none">
+            <input class="modal-input" type="password" id="copy-pw" placeholder="password" onkeydown="if(event.key==='Enter')confirmSecureShare()" />
+            <div class="modal-error" id="copy-err"></div>
           </div>
-          <div class="modal-option" id="opt-secure" onclick="selectCopyOpt('secure')">
-            <div class="modal-option-title">secure</div>
-            <div class="modal-option-desc">encrypted, password required to view</div>
+          <div class="modal-actions" style="justify-content:space-between">
+            <button class="modal-btn modal-btn-outline" id="share-secure-btn" onclick="toggleSecureShare()">protect with password</button>
+            <button class="modal-btn" id="share-primary-btn" onclick="confirmSecureShare()" style="display:none">copy protected</button>
+            <button class="modal-btn" onclick="closeModal()">done</button>
           </div>
         </div>
-        <div id="pw-field" style="display:none">
-          <input class="modal-input" type="password" id="copy-pw" placeholder="enter password…" onkeydown="if(event.key==='Enter')confirmCopy()" />
-          <div class="modal-error" id="copy-err"></div>
-        </div>
-        <div class="modal-actions">
-          <button class="modal-btn modal-btn-outline" onclick="closeModal()">cancel</button>
-          <button class="modal-btn" onclick="confirmCopy()">copy url</button>
-        </div>
+        <div class="share-copied-note" id="share-copied-note"></div>
       </div>
     </div>`;
 
-  window.selectCopyOpt = (opt) => {
-    document.getElementById('opt-plain').className = 'modal-option' + (opt === 'plain' ? ' selected' : '');
-    document.getElementById('opt-secure').className = 'modal-option' + (opt === 'secure' ? ' selected' : '');
-    document.getElementById('pw-field').style.display = opt === 'secure' ? 'block' : 'none';
-    if (opt === 'secure') setTimeout(() => document.getElementById('copy-pw')?.focus(), 50);
-  };
+  window._shareKind = kind;
+  window._shareSecureOpen = false;
 
-  window.confirmCopy = async () => {
-    const selected = document.getElementById('opt-secure').classList.contains('selected') ? 'secure' : 'plain';
-    if (selected === 'plain') {
-      const compressed = lzEncode(getPayload());
-      const url = window.location.origin + window.location.pathname + '#' + compressed;
-      await navigator.clipboard.writeText(url);
-      gaEvent('copy_url_plain', { item_count: items.length });
-      closeModal(); showToast('plain url copied!');
+  window.toggleSecureShare = () => {
+    window._shareSecureOpen = !window._shareSecureOpen;
+    const open = window._shareSecureOpen;
+    document.getElementById('pw-field').style.display = open ? 'block' : 'none';
+    document.getElementById('share-primary-btn').style.display = open ? 'inline-block' : 'none';
+    document.getElementById('share-secure-btn').textContent = open ? 'use open copy' : 'protect with password';
+    if (open) {
+      setTimeout(() => document.getElementById('copy-pw')?.focus(), 50);
     } else {
-      const pw = document.getElementById('copy-pw').value;
-      if (!pw) { document.getElementById('copy-err').textContent = 'please enter a password'; return; }
-      const hash = await encryptPayload(pw, getPayload());
-      const url = window.location.origin + window.location.pathname + '#' + hash;
-      await navigator.clipboard.writeText(url);
-      gaEvent('copy_url_secure', { item_count: items.length });
-      updateHash(hash); currentlyEncrypted = true; renderBadge();
-      closeModal(); showToast('secure url copied!');
+      deliverShare(kind, buildShareUrl(lzEncode(getPayload())), false);
     }
   };
+
+  window.confirmSecureShare = async () => {
+    if (!window._shareSecureOpen) {
+      window.toggleSecureShare();
+      return;
+    }
+    const pw = document.getElementById('copy-pw').value;
+    const err = document.getElementById('copy-err');
+    if (!pw) { err.textContent = 'enter a password'; return; }
+    err.textContent = '';
+    const hash = await encryptPayload(pw, getPayload());
+    const url = buildShareUrl(hash);
+    const ok = await deliverShare(kind, url, true);
+    if (!ok) return;
+    gaEvent(isQr ? 'copy_qr_secure' : 'copy_url_secure', { item_count: items.length });
+    updateHash(hash);
+    currentlyEncrypted = true;
+    renderBadge();
+  };
+
+  deliverShare(kind, buildShareUrl(lzEncode(getPayload())), false).then(ok => {
+    if (ok) gaEvent(isQr ? 'copy_qr_plain' : 'copy_url_plain', { item_count: items.length });
+  });
+}
+
+async function deliverShare(kind, url, secure) {
+  const kicker = document.getElementById('share-kicker');
+  const status = document.getElementById('share-status-text');
+  const note = document.getElementById('share-copied-note');
+  const preview = document.getElementById('qr-preview');
+  if (!kicker || !status) return false;
+
+  if (kind === 'url') {
+    const ok = await copyTextToClipboard(url);
+    kicker.textContent = secure ? 'protected url' : 'open url copied';
+    status.textContent = ok
+      ? (secure ? 'Protected URL copied. Recipients need the password to open it.' : 'Open URL copied. Anyone with the link can view it.')
+      : 'Could not copy automatically — copy from the address bar.';
+    if (note) note.textContent = ok ? (secure ? 'protected url copied' : '') : '';
+    if (ok && secure) showToast('protected url copied');
+    return ok;
+  }
+
+  if (typeof QRCode === 'undefined') {
+    kicker.textContent = 'qr unavailable';
+    status.textContent = 'QR library failed to load.';
+    return false;
+  }
+
+  try {
+    const canvas = await makeQrCanvas(url);
+    const blob = await canvasToBlob(canvas);
+    const ok = await copyBlobToClipboard(blob);
+    if (preview) {
+      preview.innerHTML = '';
+      preview.appendChild(canvas);
+      preview.style.display = 'flex';
+    }
+    kicker.textContent = secure ? 'protected qr' : 'open qr copied';
+    status.textContent = ok
+      ? (secure ? 'Protected QR copied. Scanning it asks for the password first.' : 'Open QR copied. Scan it to load this list.')
+      : 'Could not copy the image — scan the QR below.';
+    if (note) note.textContent = ok ? (secure ? 'protected qr copied' : '') : '';
+    if (ok && secure) showToast('protected qr copied');
+    return true;
+  } catch (e) {
+    kicker.textContent = 'too large for qr';
+    status.textContent = 'This list is too big to fit in a QR code. Copy the URL instead.';
+    if (preview) preview.style.display = 'none';
+    return false;
+  }
 }
 
 function openAppHomeInNewTab() {
@@ -563,9 +764,14 @@ function openAppHomeInNewTab() {
 }
 
 function newDb() {
+  cancelDraftTimers();
   items = []; schemeMap = {}; currentlyEncrypted = false;
+  const input = document.getElementById('content-input');
+  if (input) input.value = '';
+  persistDraftLocal('');
   resetListFilters();
   history.replaceState(null, '', window.location.pathname);
+  lastWrittenHash = '';
   closeModal(); render(); updateSizeBar('');
 }
 
@@ -598,6 +804,10 @@ function openDecryptModal(hash) {
       return;
     }
     items = data.i; currentlyEncrypted = true;
+    if (typeof data.d === 'string' && data.d) {
+      document.getElementById('content-input').value = data.d;
+    }
+    persistDraftLocal(getDraftText());
     gaEvent('decrypt_success', { item_count: items.length });
     updateSizeBar(lzEncode(getPayload()));
     closeModal(); renderBadge(); render();
@@ -665,14 +875,29 @@ async function loadFromHash() {
   }
   gaEvent('page_view', { has_hash, hash_kind });
 
-  if (!hash) { render(); updateStats(); return; }
+  if (!hash) {
+    restoreDraftLocal();
+    if (getDraftText()) flushDraftToUrl();
+    render();
+    updateStats();
+    return;
+  }
   if (hash.startsWith('v2.')) {
     openDecryptModal(hash);
   } else {
     const data = lzDecode(hash);
     if (data && data.v === 1 && Array.isArray(data.i)) {
       items = data.i;
+      if (typeof data.d === 'string' && data.d) {
+        document.getElementById('content-input').value = data.d;
+      } else {
+        restoreDraftLocal();
+      }
+      lastWrittenHash = hash;
       updateSizeBar(lzEncode(getPayload()));
+      flushDraftToUrl();
+    } else {
+      restoreDraftLocal();
     }
     render();
   }
@@ -769,6 +994,7 @@ function handleImport(e) {
     }
 
     if (added) {
+      currentlyEncrypted = false;
       updateHash(lzEncode(getPayload()));
       render();
       gaEvent('import_success', { format, item_count: added });
@@ -800,6 +1026,10 @@ function exportJson() {
 }
 
 document.getElementById('content-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem(); } });
+document.getElementById('content-input').addEventListener('input', scheduleDraftSave);
+document.getElementById('content-input').addEventListener('blur', flushDraftToUrl);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraftToUrl(); });
+window.addEventListener('pagehide', flushDraftToUrl);
 (function bindFilterBar() {
   const fi = document.getElementById('list-filter');
   const st = document.getElementById('list-sort');
