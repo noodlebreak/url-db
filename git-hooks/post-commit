@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# After each successful commit: push to origin, then deploy with pico.
+# After each successful commit: push to origin (GitHub Pages deploys from master).
 # Skip with: SKIP_POST_COMMIT_PUSH=1 git commit ...
 
 set -euo pipefail
@@ -13,12 +13,9 @@ cd "$root"
 
 branch="$(git rev-parse --abbrev-ref HEAD)"
 if [ "$branch" = "HEAD" ]; then
-  echo "post-commit: detached HEAD — skipping push and pico"
+  echo "post-commit: detached HEAD — skipping push"
   exit 0
 fi
 
 echo "post-commit: pushing ${branch}…"
 git push -u origin "$branch"
-
-echo "post-commit: running pico-command.sh…"
-bash "$root/pico-command.sh"

@@ -4,7 +4,7 @@ A bare-bones link & text sharing app with **no backend**. Your data is compresse
 
 ## Demo
 
-**[https://noodlebreak-url-db.pgs.sh/](https://noodlebreak-url-db.pgs.sh/)**
+**[https://noodlebreak.github.io/url-db/](https://noodlebreak.github.io/url-db/)**
 
 ## How it works
 
@@ -37,8 +37,8 @@ Your mileage may vary depending on the sharing medium.
 
 ## Deploy
 
-Host `index.html` anywhere that serves static files. For example, with [pico.sh](https://pico.sh) pages:
+Hosted on [GitHub Pages](https://pages.github.com/) from the `master` branch (root). Push to `master` and the site updates automatically:
 
 ```bash
-rsync --delete -rv --exclude '.git*' --exclude 'pico-command.sh' . pgs.sh:/url-db
+git push origin master
 ```
