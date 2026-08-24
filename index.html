@@ -2,13 +2,13 @@
 <meta charset="UTF-8">
 <!-- GA4: replace G-XXXXXXXXXX with your Measurement ID (Admin → Data streams). Never send location.hash — it can contain user data. -->
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-E6VEL8X0YW"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-GELGF13Z9T"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag() { dataLayer.push(arguments); }
   gtag('js', new Date());
 
-  gtag('config', 'G-E6VEL8X0YW');
+  gtag('config', 'G-GELGF13Z9T');
 </script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -149,12 +149,12 @@ h1 .app-title-btn:focus-visible { outline: 2px solid var(--blue-400); outline-of
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 
 <div id="app">
   <div class="sticky-header">
     <div class="header-row">
-      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.28</span></h1>
+      <h1><button type="button" class="app-title-btn" onclick="openAppHomeInNewTab()" title="open a fresh urlDB in a new tab">urlDB</button> <span style="font-size:13px;font-weight:400;color:#378ADD;letter-spacing:0;">v0.27</span></h1>
       <button class="about-link" onclick="openAboutModal()">about</button>
     </div>
     <p class="subtitle1">paste links or text — your data lives in the url, no backend, no cloud storage</p>
@@ -616,28 +616,14 @@ async function copyBlobToClipboard(blob) {
   }
 }
 
-function makeQrCanvas(url) {
-  if (typeof qrcode !== 'function') throw new Error('qr unavailable');
-  const qr = qrcode(0, 'L');
-  qr.addData(url);
-  qr.make();
-  const modules = qr.getModuleCount();
-  const quiet = 1;
-  const target = 512;
-  const scale = Math.max(2, Math.floor(target / (modules + quiet * 2)));
-  const size = scale * (modules + quiet * 2);
+async function makeQrCanvas(url) {
   const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = '#042C53';
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
-    }
-  }
+  await QRCode.toCanvas(canvas, url, {
+    errorCorrectionLevel: 'L',
+    margin: 1,
+    width: 512,
+    color: { dark: '#042C53', light: '#ffffff' }
+  });
   return canvas;
 }
 
@@ -740,14 +726,14 @@ async function deliverShare(kind, url, secure) {
     return ok;
   }
 
-  if (typeof qrcode !== 'function') {
+  if (typeof QRCode === 'undefined') {
     kicker.textContent = 'qr unavailable';
     status.textContent = 'QR library failed to load.';
     return false;
   }
 
   try {
-    const canvas = makeQrCanvas(url);
+    const canvas = await makeQrCanvas(url);
     const blob = await canvasToBlob(canvas);
     const ok = await copyBlobToClipboard(blob);
     if (preview) {
